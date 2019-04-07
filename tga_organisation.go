@@ -12,13 +12,17 @@ import (
 )
 
 type TGA struct {
-	Endpoint string // https://ws.sandbox.training.gov.au/Deewr.Tga.Webservices/
-	username string // WebService.Read
-	password string
+	Endpoint     string // https://ws.sandbox.training.gov.au/Deewr.Tga.Webservices/
+	username     string // WebService.Read
+	password     string
+	lastResponse string
 }
 
-// CheckMoodlePassword completes the moodle signin form and checks the response from moodle for indicators of signin success or failure.
-func (tga *TGA) GetDetails(code string) (*Organisation, error) {
+func (tga *TGA) LastSoapResponse() string {
+	return tga.lastResponse
+}
+
+func (tga *TGA) GetOrganisationDetails(code string) (*Organisation, error) {
 
 	soapRequest := `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
@@ -75,7 +79,7 @@ func (tga *TGA) GetDetails(code string) (*Organisation, error) {
 		return nil, err
 	}
 	body, err := ioutil.ReadAll(resp.Body)
-	//b := string(body)
+	tga.lastResponse = string(body)
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +134,15 @@ type Organisation struct {
 	TradingNames            *ArrayOfTradingName            `xml:"TradingNames,omitempty"`
 	UpdatedDate             *DateTimeOffset                `xml:"UpdatedDate,omitempty"`
 	Urls                    *ArrayOfUrl                    `xml:"Urls,omitempty"`
+
+	// Additional data for RTO organisations
+	Classifications       *ArrayOfClassification                `xml:"Classifications,omitempty"`
+	DeliveryNotifications *ArrayOfDeliveryNotification          `xml:"DeliveryNotifications,omitempty"`
+	RegistrationManagers  *ArrayOfRegistrationManagerAssignment `xml:"RegistrationManagers,omitempty"`
+	RegistrationPeriods   *ArrayOfRegistrationPeriod            `xml:"RegistrationPeriods,omitempty"`
+	RegistrationStatus    string                                `xml:"RegistrationStatus,omitempty"`
+	Restrictions          *ArrayOfRtoRestriction                `xml:"Restrictions,omitempty"`
+	Scopes                *ArrayOfScope                         `xml:"Scopes,omitempty"`
 }
 
 type ArrayOfOrganisationCode struct {
@@ -138,7 +151,6 @@ type ArrayOfOrganisationCode struct {
 
 type OrganisationCode struct {
 	*AbstractDto
-
 	Code string `xml:"Code,omitempty"`
 }
 
@@ -146,6 +158,14 @@ type AbstractDto struct {
 	ActionOnEntity *ActionOnEntity `xml:"ActionOnEntity,omitempty"`
 	EndDate        string          `xml:"EndDate,omitempty"`
 	StartDate      string          `xml:"StartDate,omitempty"`
+}
+
+func (d *AbstractDto) End() *time.Time {
+	p, err := time.Parse("2006-01-02", d.EndDate)
+	if err != nil {
+		return nil
+	}
+	return &p
 }
 
 type ArrayOfContact struct {
@@ -171,9 +191,9 @@ type Contact struct {
 
 type Address struct {
 	CountryCode   string  `xml:"CountryCode,omitempty"`
-	Latitude      float64 `xml:"Latitude,omitempty"`
 	Line1         string  `xml:"Line1,omitempty"`
 	Line2         string  `xml:"Line2,omitempty"`
+	Latitude      float64 `xml:"Latitude,omitempty"`
 	Longitude     float64 `xml:"Longitude,omitempty"`
 	Postcode      string  `xml:"Postcode,omitempty"`
 	StateCode     string  `xml:"StateCode,omitempty"`
@@ -187,7 +207,6 @@ type ArrayOfDataManagerAssignment struct {
 
 type DataManagerAssignment struct {
 	*AbstractDto
-
 	Code string `xml:"Code,omitempty"`
 }
 
@@ -247,3 +266,119 @@ type DateTimeOffset struct {
 type ArrayOfstring struct {
 	String []string `xml:"string,omitempty"`
 }
+
+type ArrayOfClassification struct {
+	Classification []*Classification `xml:"Classification,omitempty"`
+}
+
+type Classification struct {
+	*AbstractDto
+	PurposeCode string `xml:"PurposeCode,omitempty"`
+	SchemeCode  string `xml:"SchemeCode,omitempty"`
+	ValueCode   string `xml:"ValueCode,omitempty"`
+}
+
+type ArrayOfDeliveryNotification struct {
+	DeliveryNotification []*DeliveryNotification `xml:"DeliveryNotification,omitempty"`
+}
+
+type DeliveryNotification struct {
+	ActionOnEntity   *ActionOnEntity                            `xml:"ActionOnEntity,omitempty"`
+	DateOfChange     string                                     `xml:"DateOfChange,omitempty"`
+	GeographicAreas  *ArrayOfDeliveryNotificationGeographicArea `xml:"GeographicAreas,omitempty"`
+	IsCessation      bool                                       `xml:"IsCessation,omitempty"`
+	NotificationDate string                                     `xml:"NotificationDate,omitempty"`
+	Scopes           *ArrayOfDeliveryNotificationScope          `xml:"Scopes,omitempty"`
+}
+
+type ArrayOfDeliveryNotificationGeographicArea struct {
+	DeliveryNotificationGeographicArea []*DeliveryNotificationGeographicArea `xml:"DeliveryNotificationGeographicArea,omitempty"`
+}
+
+type DeliveryNotificationGeographicArea struct {
+	CountryCode string `xml:"CountryCode,omitempty"`
+	StateCode   string `xml:"StateCode,omitempty"`
+}
+
+type ArrayOfDeliveryNotificationScope struct {
+	DeliveryNotificationScope []*DeliveryNotificationScope `xml:"DeliveryNotificationScope,omitempty"`
+}
+
+type DeliveryNotificationScope struct {
+	Code                  string                  `xml:"Code,omitempty"`
+	TrainingComponentType *TrainingComponentTypes `xml:"TrainingComponentType,omitempty"`
+}
+
+type TrainingComponentType string
+
+const (
+	TCTAccreditedCourse       TrainingComponentType = "AccreditedCourse"
+	TCTQualification          TrainingComponentType = "Qualification"
+	TCTUnit                   TrainingComponentType = "Unit"
+	TCTSkillSet               TrainingComponentType = "SkillSet"
+	TCTTrainingPackage        TrainingComponentType = "TrainingPackage"
+	TCTAccreditedCourseModule TrainingComponentType = "AccreditedCourseModule"
+	TCTTrainingPackageGroup   TrainingComponentType = "TrainingPackageGroup"
+	TCTAll                    TrainingComponentType = "All"
+	TCTQualsSkillsUnits       TrainingComponentType = "QualsSkillsUnits"
+)
+
+type TrainingComponentTypes struct {
+}
+
+type ArrayOfRegistrationManagerAssignment struct {
+	RegistrationManagerAssignment []*RegistrationManagerAssignment `xml:"RegistrationManagerAssignment,omitempty"`
+}
+
+type RegistrationManagerAssignment struct {
+	*AbstractDto
+	Code string `xml:"Code,omitempty"`
+}
+
+type ArrayOfRegistrationPeriod struct {
+	RegistrationPeriod []*RegistrationPeriod `xml:"RegistrationPeriod,omitempty"`
+}
+
+type RegistrationPeriod struct {
+	*AbstractDto
+	EndReasonCode     string `xml:"EndReasonCode,omitempty"`
+	EndReasonComments string `xml:"EndReasonComments,omitempty"`
+	Exerciser         string `xml:"Exerciser,omitempty"`
+	LegalAuthority    string `xml:"LegalAuthority,omitempty"`
+}
+
+type ArrayOfRtoRestriction struct {
+	RtoRestriction []*RtoRestriction `xml:"RtoRestriction,omitempty"`
+}
+
+type RtoRestriction struct {
+	*AbstractDto
+	Code                string `xml:"Code,omitempty"`
+	Restriction         string `xml:"Restriction,omitempty"`
+	RestrictionTypeCode string `xml:"RestrictionTypeCode,omitempty"`
+	ShowRestriction     bool   `xml:"ShowRestriction,omitempty"`
+}
+
+type ArrayOfScope struct {
+	Scope []*Scope `xml:"Scope,omitempty"`
+}
+
+type Scope struct {
+	*AbstractDto
+	ExtentCode            string             `xml:"ExtentCode,omitempty"`
+	IsImplicit            bool               `xml:"IsImplicit,omitempty"`
+	IsRefused             bool               `xml:"IsRefused,omitempty"`
+	NrtCode               string             `xml:"NrtCode,omitempty"`
+	ScopeDecisionType     *ScopeDecisionType `xml:"ScopeDecisionType,omitempty"`
+	TrainingComponentType string             `xml:"TrainingComponentType,omitempty"`
+	//TrainingComponentType *TrainingComponentTypes `xml:"TrainingComponentType,omitempty"`
+}
+
+type ScopeDecisionType string
+
+const (
+	ScopeDecisionTypeGranted   ScopeDecisionType = "Granted"
+	ScopeDecisionTypeRefused   ScopeDecisionType = "Refused"
+	ScopeDecisionTypeSuspended ScopeDecisionType = "Suspended"
+	ScopeDecisionTypeCancelled ScopeDecisionType = "Cancelled"
+)
