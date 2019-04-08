@@ -11,17 +11,6 @@ import (
 	"time"
 )
 
-type TGA struct {
-	Endpoint     string // https://ws.sandbox.training.gov.au/Deewr.Tga.Webservices/
-	username     string // WebService.Read
-	password     string
-	lastResponse string
-}
-
-func (tga *TGA) LastSoapResponse() string {
-	return tga.lastResponse
-}
-
 func (tga *TGA) GetOrganisationDetails(code string) (*Organisation, error) {
 
 	soapRequest := `<?xml version="1.0" encoding="UTF-8"?>

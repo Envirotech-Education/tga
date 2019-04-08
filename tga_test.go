@@ -10,7 +10,7 @@ func TestTgaTraining(t *testing.T) {
 
 	// Test basic operation
 	{
-		tga := TGA{"https://ws.sandbox.training.gov.au/Deewr.Tga.Webservices/", "WebService.Read", "Asdf098", ""}
+		tga := NewTGA("https://ws.sandbox.training.gov.au/Deewr.Tga.Webservices/", "WebService.Read", "Asdf098")
 
 		// Check this random email address is not throttled
 		tc, err := tga.GetTrainingDetails("CUACMP511")
